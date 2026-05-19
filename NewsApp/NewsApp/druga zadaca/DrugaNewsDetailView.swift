@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct NewsDetailView: View {
-    let article: DrugaNews
+struct DrugaNewsDetailView: View {
+    let article: DrugaNewsItem
 
     var body: some View {
         ScrollView {
@@ -85,9 +85,9 @@ struct NewsDetailView: View {
 
 #Preview {
     NavigationStack {
-        NewsDetailView(article: DrugaNews(
+        DrugaNewsDetailView(article: DrugaNewsItem(
             url: "https://www.jabuka.tv/wp-content/uploads/2018/06/luka_modric_231412411-810x446.jpg",
-            caption: DrugaCategory(main: .Sport, sub: "Football"),
+            caption: DrugaNewsCategory(main: .Sport, sub: "Football"),
             date: Calendar.current.date(from: DateComponents(year: 2018, month: 7, day: 15))!,
             headline: "Hrvatska osvojila svjetsko prvenstvo 2026.",
             footnote: "Nakon finalne pobjede nad Brazilom 3:2, Luka Modrić je u produžecima zabio gol koji je osigurao pobjedu. Cijela Hrvatska slavila je na ulicama do ranih jutarnjih sati.",

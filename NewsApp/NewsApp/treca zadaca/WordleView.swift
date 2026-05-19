@@ -93,10 +93,12 @@ struct CurrentGuessView: View {
 
 
 struct WordleView: View {
+    @Environment(AuthService.self) private var auth
     @State var attempts: [String]
     @State private var currentGuess: String = ""
     @State private var solution: String
     @State private var gameOver: Bool = false
+    @State private var isLoadingWord: Bool = true
 
     init(attempts: [String] = []) {
         _attempts = State(initialValue: attempts)
@@ -108,7 +110,12 @@ struct WordleView: View {
             ScrollView {
                 VStack(spacing: 8) {
                     AttemptListView(attempts: attempts, solution: solution)
-                    CurrentGuessView(currentGuess: $currentGuess)
+                    if isLoadingWord {
+                        ProgressView("Učitavanje riječi...")
+                            .frame(height: 55)
+                    } else {
+                        CurrentGuessView(currentGuess: $currentGuess)
+                    }
                 }
                 .padding()
             }
@@ -118,7 +125,7 @@ struct WordleView: View {
             HStack {
                 TextField("Pogodi...", text: $currentGuess)
                     .autocorrectionDisabled()
-                    .disabled(gameOver)
+                    .disabled(gameOver || isLoadingWord)
 
                 Button("Potvrdi") {
                     let guess = currentGuess.uppercased()
@@ -128,7 +135,7 @@ struct WordleView: View {
                         gameOver = true
                     }
                 }
-                .disabled(currentGuess.count != 5 || gameOver)
+                .disabled(currentGuess.count != 5 || gameOver || isLoadingWord)
             }
             .padding()
         }
@@ -137,11 +144,28 @@ struct WordleView: View {
         } message: {
             Text("Pogodili ste riječ \(solution) u \(attempts.count) pokušaja!")
         }
+        .task {
+            await loadWord()
+        }
+    }
+
+    private func loadWord() async {
+        guard let token = auth.token else {
+            isLoadingWord = false
+            return
+        }
+        do {
+            solution = try await NewsService.shared.fetchWordleWord(token: token)
+        } catch {
+            // fallback: zadržava nasumičnu riječ postavljenu u init-u
+        }
+        isLoadingWord = false
     }
 }
 
 #Preview {
     NavigationStack {
         WordleView()
+            .environment(AuthService())
     }
 }
