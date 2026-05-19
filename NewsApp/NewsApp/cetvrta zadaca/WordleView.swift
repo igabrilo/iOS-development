@@ -17,7 +17,6 @@ struct WordleWords {
 }
 
 
-
 struct LetterSquareView: View {
     let character: Character
     let color: Color
@@ -36,6 +35,7 @@ struct LetterSquareView: View {
 struct AttemptRowView: View {
     let word: String
     let solution: String
+    let revealedCount: Int
 
     var body: some View {
         HStack(spacing: 6) {
@@ -46,6 +46,7 @@ struct AttemptRowView: View {
     }
 
     func color(at index: Int) -> Color {
+        guard index < revealedCount else { return Color.gray.opacity(0.3) }
         let guessChar = Character(word[index].uppercased())
         let solutionChar = Character(solution[index].uppercased())
 
@@ -63,10 +64,11 @@ struct AttemptRowView: View {
 struct AttemptListView: View {
     let attempts: [String]
     let solution: String
+    let revealedCounts: [Int]
 
     var body: some View {
-        ForEach(Array(attempts.enumerated()), id: \.offset) { _, word in
-            AttemptRowView(word: word, solution: solution)
+        ForEach(Array(attempts.enumerated()), id: \.offset) { i, word in
+            AttemptRowView(word: word, solution: solution, revealedCount: revealedCounts[i])
         }
     }
 }
@@ -95,13 +97,16 @@ struct CurrentGuessView: View {
 struct WordleView: View {
     @Environment(AuthService.self) private var auth
     @State var attempts: [String]
+    @State private var revealedCounts: [Int]
     @State private var currentGuess: String = ""
     @State private var solution: String
     @State private var gameOver: Bool = false
     @State private var isLoadingWord: Bool = true
+    @State private var isRevealing: Bool = false
 
     init(attempts: [String] = []) {
         _attempts = State(initialValue: attempts)
+        _revealedCounts = State(initialValue: Array(repeating: 5, count: attempts.count))
         _solution = State(initialValue: WordleWords.all.randomElement()!)
     }
 
@@ -109,7 +114,7 @@ struct WordleView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 8) {
-                    AttemptListView(attempts: attempts, solution: solution)
+                    AttemptListView(attempts: attempts, solution: solution, revealedCounts: revealedCounts)
                     if isLoadingWord {
                         ProgressView("Učitavanje riječi...")
                             .frame(height: 55)
@@ -125,17 +130,12 @@ struct WordleView: View {
             HStack {
                 TextField("Pogodi...", text: $currentGuess)
                     .autocorrectionDisabled()
-                    .disabled(gameOver || isLoadingWord)
+                    .disabled(gameOver || isLoadingWord || isRevealing)
 
                 Button("Potvrdi") {
-                    let guess = currentGuess.uppercased()
-                    attempts.append(guess)
-                    currentGuess = ""
-                    if guess == solution.uppercased() {
-                        gameOver = true
-                    }
+                    submitGuess()
                 }
-                .disabled(currentGuess.count != 5 || gameOver || isLoadingWord)
+                .disabled(currentGuess.count != 5 || gameOver || isLoadingWord || isRevealing)
             }
             .padding()
         }
@@ -146,6 +146,28 @@ struct WordleView: View {
         }
         .task {
             await loadWord()
+        }
+    }
+
+    private func submitGuess() {
+        let guess = currentGuess.uppercased()
+        currentGuess = ""
+        attempts.append(guess)
+        revealedCounts.append(0)
+        let rowIndex = attempts.count - 1
+        isRevealing = true
+
+        Task {
+            for i in 0..<5 {
+                try? await Task.sleep(for: .milliseconds(300))
+                withAnimation(.easeIn(duration: 0.15)) {
+                    revealedCounts[rowIndex] = i + 1
+                }
+            }
+            isRevealing = false
+            if guess == solution.uppercased() {
+                gameOver = true
+            }
         }
     }
 

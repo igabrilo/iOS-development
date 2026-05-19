@@ -3,6 +3,7 @@ import SwiftUI
 enum AppTab: Hashable {
     case news
     case games
+    case weather
 }
 
 struct ContentView: View {
@@ -18,6 +19,10 @@ struct ContentView: View {
 
                 Tab("Igrice", systemImage: "gamecontroller", value: .games) {
                     GamesView()
+                }
+
+                Tab("Prognoza", systemImage: "cloud.sun.fill", value: .weather) {
+                    WeatherView()
                 }
             }
         } else {
